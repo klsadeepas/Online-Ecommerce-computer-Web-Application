@@ -2,15 +2,22 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, googleProvider } from '../firebase';
 import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { useDispatch } from 'react-redux';
+import { setUser } from '../store';
 import { motion } from 'motion/react';
-import { Cpu, Mail, Lock, LogIn, Github } from 'lucide-react';
+import { Cpu, Mail, Lock, LogIn, Github, Shield } from 'lucide-react';
+
+const ADMIN_EMAIL = 'admin@gmail.com';
+const ADMIN_PASSWORD = 'admin123';
 
 const Login = () => {
   const [isRegister, setIsRegister] = useState(false);
+  const [isAdminLogin, setIsAdminLogin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleGoogleLogin = async () => {
     try {
@@ -25,6 +32,20 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
+      // Check for admin login
+      if (isAdminLogin) {
+        if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+          const adminUser = { email: ADMIN_EMAIL, isAdmin: true, displayName: 'Admin' };
+          dispatch(setUser(adminUser));
+          localStorage.setItem('user', JSON.stringify(adminUser));
+          navigate('/admin');
+          return;
+        } else {
+          setError('Invalid admin credentials');
+          return;
+        }
+      }
+      
       if (isRegister) {
         await createUserWithEmailAndPassword(auth, email, password);
       } else {
@@ -48,9 +69,11 @@ const Login = () => {
           <div className="inline-flex w-16 h-16 bg-sky-500 rounded-2xl items-center justify-center mb-6 shadow-xl shadow-sky-500/30 group">
             <Cpu className="text-white w-8 h-8 group-hover:rotate-12 transition-transform" />
           </div>
-          <h2 className="text-3xl font-black text-white tracking-tighter uppercase accent-glow">TECH<span className="text-sky-400">HAVEN</span></h2>
+          <h2 className="text-3xl font-black text-white tracking-tighter uppercase accent-glow">
+            {isAdminLogin ? 'Admin' : 'TECH'}<span className="text-sky-400">{isAdminLogin ? 'Dashboard' : 'HAVEN'}</span>
+          </h2>
           <p className="text-slate-500 mt-2 font-black uppercase tracking-widest text-[10px]">
-            {isRegister ? 'Join the tech revolution' : 'Access high performance hardware'}
+            {isAdminLogin ? 'Administrative access only' : isRegister ? 'Join the tech revolution' : 'Access high performance hardware'}
           </p>
         </div>
 
@@ -89,10 +112,23 @@ const Login = () => {
             type="submit"
             className="w-full py-4 bg-sky-500 hover:bg-sky-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl shadow-sky-500/20 flex items-center justify-center gap-3 group active:scale-95"
           >
-            {isRegister ? 'Create Account' : 'Sign In'}
+            {isAdminLogin ? 'Admin Login' : isRegister ? 'Create Account' : 'Sign In'}
             <LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
         </form>
+
+        {/* Admin Login Toggle */}
+        {!isRegister && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => { setIsAdminLogin(!isAdminLogin); setError(''); }}
+              className="text-xs font-black uppercase tracking-widest text-slate-500 hover:text-sky-400 transition-colors flex items-center justify-center gap-2 mx-auto"
+            >
+              <Shield className="w-3 h-3" />
+              {isAdminLogin ? 'Switch to User Login' : 'Admin Login'}
+            </button>
+          </div>
+        )}
 
         <div className="relative my-10">
           <div className="absolute inset-0 flex items-center">
@@ -104,19 +140,24 @@ const Login = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <button 
-            onClick={handleGoogleLogin}
-            className="flex items-center justify-center gap-3 py-3 glass hover:bg-white/5 border border-white/5 rounded-2xl transition-all font-black uppercase tracking-widest text-[9px] text-slate-400 hover:text-white"
-          >
-            <img src="https://www.google.com/favicon.ico" className="w-3 h-3 grayscale group-hover:grayscale-0" alt="" />
-            Google
-          </button>
-          <button className="flex items-center justify-center gap-3 py-3 glass hover:bg-white/5 border border-white/5 rounded-2xl transition-all font-black uppercase tracking-widest text-[9px] text-slate-400 hover:text-white">
-            <Github className="w-3.5 h-3.5" />
-            GitHub
-          </button>
+          {!isAdminLogin && (
+            <>
+              <button 
+                onClick={handleGoogleLogin}
+                className="flex items-center justify-center gap-3 py-3 glass hover:bg-white/5 border border-white/5 rounded-2xl transition-all font-black uppercase tracking-widest text-[9px] text-slate-400 hover:text-white"
+              >
+                <img src="https://www.google.com/favicon.ico" className="w-3 h-3 grayscale group-hover:grayscale-0" alt="" />
+                Google
+              </button>
+              <button className="flex items-center justify-center gap-3 py-3 glass hover:bg-white/5 border border-white/5 rounded-2xl transition-all font-black uppercase tracking-widest text-[9px] text-slate-400 hover:text-white">
+                <Github className="w-3.5 h-3.5" />
+                GitHub
+              </button>
+            </>
+          )}
         </div>
 
+        {!isAdminLogin && (
         <p className="mt-10 text-center text-[10px] text-slate-600 font-black uppercase tracking-widest">
           {isRegister ? 'Already verified?' : 'New operator?'}
           <button 
@@ -126,6 +167,7 @@ const Login = () => {
             {isRegister ? 'Sign In' : 'Register Now'}
           </button>
         </p>
+        )}
       </motion.div>
     </div>
   );
